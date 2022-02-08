@@ -1,0 +1,30 @@
+{
+  "name": "app",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "serve": "vue-cli-service serve",
+    "build": "vue-cli-service build"
+  },
+  "dependencies": {
+    "@mdi/font": "^6.5.95",
+    "core-js": "^3.6.5",
+    "rxjs": "^7.5.2",
+    "symbol-sdk": "^1.0.3",
+    "vue": "^2.6.11",
+    "vuetify": "^2.6.3"
+  },
+  "devDependencies": {
+    "@vue/cli-plugin-babel": "~4.5.0",
+    "@vue/cli-service": "~4.5.0",
+    "deepmerge": "^4.2.2",
+    "sass": "~1.32",
+    "sass-loader": "^12.4.0",
+    "vue-template-compiler": "^2.6.11"
+  },
+  "browserslist": [
+    "> 1%",
+    "last 2 versions",
+    "not dead"
+  ]
+}
