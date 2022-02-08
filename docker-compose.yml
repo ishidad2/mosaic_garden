@@ -1,0 +1,9 @@
+version: '3'
+services:
+  node:
+    build: .
+    container_name: 'node'
+    tty: true
+    volumes:
+      - ./src:/root/src
+    working_dir: "/root/src"
