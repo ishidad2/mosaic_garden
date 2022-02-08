@@ -5,5 +5,5 @@ services:
     container_name: 'node'
     tty: true
     volumes:
-      - ./src:/root/src
-    working_dir: "/root/src"
+      - ./:/root/src
+    working_dir: "/root/src/src"
