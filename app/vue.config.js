@@ -4,5 +4,6 @@ module.exports = {
       entry: "src/main.js",
       title: "Mosaic Garden",
     }
-  }
+  },
+  publicPath: './',
 }
