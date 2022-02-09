@@ -57,8 +57,11 @@
 </template>
 
 <script>
-// const NODE = "https://yamatanoorochi.sfn.tools:3001";
-const NODE = "https://dual-1.nodes-xym.work:3001";
+// const NODE = "https://yamatanoorochi.sfn.tools:3001";      //testnet
+const raw_address = "TD4B6MK7BKOKA3WJH74YDZODG5QN5DFXBCOSWNQ";//testnet
+
+// const NODE = "https://dual-1.nodes-xym.work:3001";
+// const raw_address = "NB3YJ6FZ7CRZLMILAW4S6Y3ONUP5TG5GZXGFWNA";
 
 import ListView from './components/List.vue';
 import NewTransaction from './components/NewTransactionCard.vue';
@@ -75,8 +78,7 @@ export default {
   data: function (){
     return {
       mosaics: [],
-      // g_rawAddress: symbolSdk.Address.createFromRawAddress("TD4B6MK7BKOKA3WJH74YDZODG5QN5DFXBCOSWNQ"),
-      g_rawAddress: symbolSdk.Address.createFromRawAddress("NB3YJ6FZ7CRZLMILAW4S6Y3ONUP5TG5GZXGFWNA"),
+      g_rawAddress: symbolSdk.Address.createFromRawAddress(raw_address),
       rawAddress: '',
       nglist: ng_mosaic_lists,
       accountRepository: null,
