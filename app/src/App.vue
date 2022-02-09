@@ -57,7 +57,7 @@
 </template>
 
 <script>
-// const NODE = "https://yamatanoorochi.sfn.tools:3001";      //testnet
+const NODE = "https://yamatanoorochi.sfn.tools:3001";      //testnet
 const raw_address = "TD4B6MK7BKOKA3WJH74YDZODG5QN5DFXBCOSWNQ";//testnet
 
 // const NODE = "https://dual-1.nodes-xym.work:3001";
