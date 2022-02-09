@@ -192,28 +192,30 @@ export default {
       })
       .subscribe(_ =>{
         if(_.data.length > 0){
-          this.parseTx(_.data);
+          this.parseTx(_.data, true);
           this.$set(this, "mosaics", []);
           this.getAccountInfo();
         }
       })
     },
-    parseTx(transaction){
+    parseTx(transaction, newB=null){
       transaction.forEach((tx) => {
         //トランスファートランザクションのみ処理
         if(tx.type === symbolSdk.TransactionType.TRANSFER){
           if(tx.recipientAddress.plain() === this.g_rawAddress.plain()){
-              tx.mosaics.forEach(mosaic => {
-                if(!this.nglist.find((mos) => mos === mosaic.id.toHex()) && mosaic.amount.compact() !== 0){
-                  this.histories.receive_mosaics.unshift(tx);
-                  if(!this.init){
-                    this.soundPlay("recipient");
-                  }
+            tx.mosaics.forEach(mosaic => {
+              if(!this.nglist.find((mos) => mos === mosaic.id.toHex()) && mosaic.amount.compact() !== 0){
+                if(newB){tx.newB = true;}
+                this.histories.receive_mosaics.unshift(tx);
+                if(!this.init){
+                  this.soundPlay("recipient");
                 }
-              });
+              }
+            });
           }else{
             tx.mosaics.forEach(mosaic => {
               if(!this.nglist.find((mos) => mos === mosaic.id.toHex()) && mosaic.amount.compact() !== 0){
+                if(newB){tx.newB = true;}
                 this.histories.send_mosaics.unshift(tx);
                 if(!this.init){
                   this.soundPlay();

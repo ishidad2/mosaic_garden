@@ -18,7 +18,14 @@
               <v-subheader>History of mosaic reception</v-subheader>
               <v-list-item v-for="(item, i) in recipt_items" :key="i">
                 <v-list-item-icon>
-                  <v-icon>mdi-handshake-outline</v-icon>
+                  <template v-if="item.newB && i == 0">
+                    <div class="box" >
+                      <v-icon color="orange darken-2">mdi-new-box</v-icon>
+                    </div>
+                  </template>
+                  <template v-else>
+                    <v-icon>mdi-handshake-outline</v-icon>
+                  </template>
                 </v-list-item-icon>
                 <v-list-item two-line>
                   <v-list-item-content v-for="(list, j) in display(item)" :key="j">
@@ -36,7 +43,14 @@
               <v-subheader>History of mosaic sending</v-subheader>
               <v-list-item v-for="(item, i) in send_items" :key="i">
                 <v-list-item-icon>
-                  <v-icon>mdi-hand-coin</v-icon>
+                  <template v-if="item.newB && i == 0">
+                    <div class="box" >
+                      <v-icon color="orange darken-2">mdi-new-box</v-icon>
+                    </div>
+                  </template>
+                  <template v-else>
+                    <v-icon>mdi-hand-coin</v-icon>
+                  </template>
                 </v-list-item-icon>
                 <v-list-item-content v-for="(list, j) in display(item)" :key="j">
                   <v-list-item-title>Mosaic:{{ list.name }}</v-list-item-title>
@@ -80,3 +94,19 @@ export default {
   },
 }
 </script>
+
+<style scoped>
+.box{
+  animation: flash 1.5s infinite linear;
+}
+
+@keyframes flash {
+  0%,100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0;
+  }
+}
+</style>
