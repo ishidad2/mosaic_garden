@@ -120,7 +120,7 @@ export default {
         address: this.g_rawAddress,
         group: symbolSdk.TransactionGroup.Confirmed,
         pageSize: 10,
-        order:"asc"}).toPromise();
+        order:"desc"}).toPromise();
       this.parseTx(txs.data);
       this.init = false;
     },
