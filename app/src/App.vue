@@ -118,7 +118,7 @@ export default {
         address: this.g_rawAddress,
         group: symbolSdk.TransactionGroup.Confirmed,
         pageSize: 10,
-        order:"desc"}).toPromise();
+        order:"asc"}).toPromise();
       this.parseTx(txs.data);
       this.init = false;
     },
