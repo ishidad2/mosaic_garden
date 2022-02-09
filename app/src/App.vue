@@ -242,7 +242,7 @@ export default {
 
 <style>
   #app {
-    background-image:url("./assets/img/XYM_City.png");
+    background-image:url("./assets/img/XYM_City.jpg");
     background-repeat: no-repeat;
     background-size:cover;
     background-position:center center;
