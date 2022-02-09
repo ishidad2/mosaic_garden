@@ -2,7 +2,7 @@
   <div>
     <v-card class="mx-auto">
     <v-list max-height="250" height="250" class="overflow-y-auto">
-      <v-subheader>Stock Mosaics</v-subheader>
+      <v-subheader>Stock Mosaics({{items.length}})</v-subheader>
       <v-list-item v-for="(item, i) in items" :key="i">
         <v-list-item-icon>
         <v-icon>mdi-gift</v-icon>
