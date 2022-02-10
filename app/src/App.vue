@@ -57,11 +57,11 @@
 </template>
 
 <script>
-const NODE = "https://yamatanoorochi.sfn.tools:3001";      //testnet
-const raw_address = "TD4B6MK7BKOKA3WJH74YDZODG5QN5DFXBCOSWNQ";//testnet
+// const NODE = "https://yamatanoorochi.sfn.tools:3001";      //testnet
+// const raw_address = "TD4B6MK7BKOKA3WJH74YDZODG5QN5DFXBCOSWNQ";//testnet
 
-// const NODE = "https://dual-1.nodes-xym.work:3001";
-// const raw_address = "NB3YJ6FZ7CRZLMILAW4S6Y3ONUP5TG5GZXGFWNA";
+const NODE = "https://dual-1.nodes-xym.work:3001";
+const raw_address = "NB3YJ6FZ7CRZLMILAW4S6Y3ONUP5TG5GZXGFWNA";
 
 import ListView from './components/List.vue';
 import NewTransaction from './components/NewTransactionCard.vue';
@@ -211,7 +211,7 @@ export default {
             tx.mosaics.forEach(mosaic => {
               if(!this.nglist.find((mos) => mos === mosaic.id.toHex()) && mosaic.amount.compact() !== 0){
                 if(newB){tx.newB = true;}
-                this.histories.receive_mosaics.unshift(tx);
+                this.histories.receive_mosaics.push(tx);
                 if(!this.init){
                   this.soundPlay();
                 }
@@ -221,7 +221,7 @@ export default {
             tx.mosaics.forEach(mosaic => {
               if(!this.nglist.find((mos) => mos === mosaic.id.toHex()) && mosaic.amount.compact() !== 0){
                 if(newB){tx.newB = true;}
-                this.histories.send_mosaics.unshift(tx);
+                this.histories.send_mosaics.push(tx);
                 if(!this.init){
                   this.soundPlay();
                 }
