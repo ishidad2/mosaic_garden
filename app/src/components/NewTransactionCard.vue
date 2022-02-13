@@ -111,7 +111,6 @@ export default {
       let res = [];
       const signerAddress = item.signer.address.plain();
       const recipientAddress = item.recipientAddress.plain();
-      console.log(this.getMessage(item));
       item.mosaics.forEach(mosaic => {
         res.push({
           signerAddress: signerAddress,
@@ -125,7 +124,6 @@ export default {
       return res;
     },
     getMessage(tx){
-      console.log(tx.message);
       let message = "";
       if(tx.message){
         if(tx.message.type === symbolSdk.MessageType.EncryptedMessage){
