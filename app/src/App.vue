@@ -213,6 +213,7 @@ export default {
                 if(newB){tx.newB = true;}
                 this.histories.receive_mosaics.push(tx);
                 if(!this.init){
+                  this.histories.receive_mosaics.unshift(tx);
                   this.soundPlay();
                 }
               }
@@ -223,6 +224,7 @@ export default {
                 if(newB){tx.newB = true;}
                 this.histories.send_mosaics.push(tx);
                 if(!this.init){
+                this.histories.send_mosaics.unshift(tx);
                   this.soundPlay();
                 }
               }
