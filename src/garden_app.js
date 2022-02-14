@@ -4,11 +4,15 @@
 require('dotenv').config();
 const log4js = require('log4js')
 const dayjs = require('dayjs');
+dayjs.extend(require('dayjs/plugin/timezone'));
+dayjs.extend(require('dayjs/plugin/utc'));
+dayjs.tz.setDefault('Asia/Tokyo');
 const logger = log4js.getLogger('system');
 const symbol_sdk_1 = require('symbol-sdk');
 const op = require('rxjs');
 
 const _m = require('../app/config/nglist');
+const _msg = require('../app/config/message');
 
 log4js.configure({
 appenders : {
@@ -26,6 +30,7 @@ let transactionRepository;
 let accountRepository;
 let mosaicRepository;
 let networkRepository;
+let blockRepository;
 
 let medianFeeMultiplier; //手数料乗数
 
@@ -83,6 +88,31 @@ const newBlock = ((block) => {
 });
 
 /**
+ * 本日の送信状況
+ */
+const isToday = (async(tx, epochAdjustment)=>{
+  //リポジトリからデータを取得
+  const rireki = await transactionRepository.search({
+    recipientAddress: tx.signer.address,
+    group: symbol_sdk_1.TransactionGroup.Confirmed,
+    order: 'desc',
+  }).toPromise();
+  if(rireki.data.length === 0){
+    return false;
+  }else{
+    //最新（１つ前のトランザクション日時を取得）
+    const txTimestamp = (await blockRepository.getBlockByHeight(rireki.data[0].transactionInfo.height).toPromise()).timestamp.compact();
+    const txDateTime = dayjs(txTimestamp + epochAdjustment * 1000).tz();
+    // const txDateTime = dayjs('2022-02-14').tz();
+    const now = dayjs().tz();
+    //日付の比較
+    log("１つ前のTx日が今日に含まれているかどうか: ");
+    log(txDateTime.isBefore(now, 'day'));
+    return txDateTime.isBefore(now, 'day');
+  }
+});
+
+/**
  * トランザクション送信処理
  */
 const sendTransfar = (async(height, transaction)=>{
@@ -105,12 +135,19 @@ const sendTransfar = (async(height, transaction)=>{
   //generationHashの取得
   const networkGenerationHash = await repositoryFactory.getGenerationHash().toPromise();
 
+  let strMsg = "";
+  if(await isToday(transaction, epochAdjustment)){
+    //今日はじめての場合
+    strMsg = _msg.message_list[Math.floor(Math.random() * _msg.message_list.length)];
+  }
+
+
   //トランスファートランザクション生成
   const tx = symbol_sdk_1.TransferTransaction.create(
     symbol_sdk_1.Deadline.create(epochAdjustment),
     transaction.signer.address,
     [new symbol_sdk_1.Mosaic(new symbol_sdk_1.MosaicId(mosaic_id), symbol_sdk_1.UInt64.fromUint(mosaic_num * Math.pow(10, mosaic.info.divisibility)))],
-    symbol_sdk_1.PlainMessage.create(''),
+    symbol_sdk_1.PlainMessage.create(strMsg),
     networkType,
   ).setMaxFee(medianFeeMultiplier);
 
@@ -223,6 +260,8 @@ const getMosaicInfo = (async (mosaics, height) =>{
   transactionRepository = repositoryFactory.createTransactionRepository();
   accountRepository = repositoryFactory.createAccountRepository();
   mosaicRepository = repositoryFactory.createMosaicRepository();
+  blockRepository = repositoryFactory.createBlockRepository();
+
   medianFeeMultiplier = (await networkRepository.getTransactionFees().toPromise()).medianFeeMultiplier;
   console.log(medianFeeMultiplier);
   
