@@ -97,11 +97,11 @@ const isToday = (async(tx, epochAdjustment)=>{
     group: symbol_sdk_1.TransactionGroup.Confirmed,
     order: 'desc',
   }).toPromise();
-  if(rireki.data.length === 0){
+  if(rireki.data.length < 1){
     return false;
   }else{
     //最新（１つ前のトランザクション日時を取得）
-    const txTimestamp = (await blockRepository.getBlockByHeight(rireki.data[0].transactionInfo.height).toPromise()).timestamp.compact();
+    const txTimestamp = (await blockRepository.getBlockByHeight(rireki.data[1].transactionInfo.height).toPromise()).timestamp.compact();
     const txDateTime = dayjs(txTimestamp + epochAdjustment * 1000).tz();
     // const txDateTime = dayjs('2022-02-14').tz();
     const now = dayjs().tz();
