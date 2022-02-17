@@ -145,6 +145,13 @@ const sendTransfar = (async(height, transaction)=>{
     }
   }
 
+  let v = _black_list_address.some((address) => address === transaction.signer.address.plain());
+  if(v){
+    log('Bot対策の為、送信を中止');
+    log('bot address:' + transaction.signer.address.plain());
+    return;
+  }
+
   if(!isSend){
     log('Bot対策の為、送信を中止');
     log('bot address:' + transaction.signer.address.plain());
@@ -157,13 +164,6 @@ const sendTransfar = (async(height, transaction)=>{
     }catch(e){
       console.log(e);
     }
-    return;
-  }
-
-  let v = _black_list_address.some((address) => address === transaction.signer.address.plain());
-  if(v){
-    log('Bot対策の為、送信を中止');
-    log('bot address:' + transaction.signer.address.plain());
     return;
   }
 
