@@ -13,6 +13,9 @@ const op = require('rxjs');
 
 const _m = require('../app/config/nglist');
 const _msg = require('../app/config/message');
+const _black_list_address=[];
+const fs = require("fs");
+const file_path = '../app/config/black_list_address.js';
 
 log4js.configure({
 appenders : {
@@ -42,8 +45,10 @@ if(process.env.TYPE === "MAIN_NET"){
   networkType = symbol_sdk_1.NetworkType.TEST_NET;
 }
 
-const networkCurrencyMosaicId = new symbol_sdk_1.MosaicId(process.env.MOSAIC_ID);  //手数料用XYMモザイク
+const networkCurrencyMosaicId = new symbol_sdk_1.MosaicId(process.env.MOSAIC_ID);  //XYMモザイク
 const networkCurrencyDivisibility  = 6; //XYMモザイクの過分性
+const min_block_mosaic_num = 10 * Math.pow(10, networkCurrencyDivisibility);  //bot対策用の最小XYM保有枚数
+
 const signerAddress = symbol_sdk_1.Account.createFromPrivateKey(process.env.CERTIFICATE_PRIVATE_KEY, networkType); //送信元アドレス
 
 /**
@@ -92,21 +97,32 @@ const newBlock = ((block) => {
  */
 const isToday = (async(tx, epochAdjustment)=>{
   //リポジトリからデータを取得
-  const rireki = await transactionRepository.search({
+  const histories = await transactionRepository.search({
     recipientAddress: tx.signer.address,
     group: symbol_sdk_1.TransactionGroup.Confirmed,
     order: 'desc',
   }).toPromise();
-  if(rireki.data.length < 1){
-    return false;
+  if(histories.data.length < 1){
+    return true;
   }else{
-    //最新（１つ前のトランザクション日時を取得）
-    const txTimestamp = (await blockRepository.getBlockByHeight(rireki.data[1].transactionInfo.height).toPromise()).timestamp.compact();
+    let data=null;
+    for(hitstory of histories.data){
+      //対象者の履歴からGardenアドレスへの送受信の履歴を取得
+      if(hitstory.signer.address.plain() === signerAddress.address.plain()){
+        data = hitstory;
+        break;
+      }
+    }
+    
+    if(data === null) return false;
+    //過去の履歴よりGardenアドレスへの送信日時を調査
+    const txTimestamp = (await blockRepository.getBlockByHeight(data.transactionInfo.height).toPromise()).timestamp.compact();
     const txDateTime = dayjs(txTimestamp + epochAdjustment * 1000).tz();
+    log(data.transactionInfo.height + " : " + txDateTime.format('YYYY-MM-DD hh:mm:ss'));
     // const txDateTime = dayjs('2022-02-14').tz();
     const now = dayjs().tz();
     //日付の比較
-    log("１つ前のTx日が今日に含まれているかどうか: ");
+    log("Gardenアドレスへの直近Txが今日に含まれているかどうか: ");
     log(txDateTime.isBefore(now, 'day'));
     return txDateTime.isBefore(now, 'day');
   }
@@ -116,8 +132,44 @@ const isToday = (async(tx, epochAdjustment)=>{
  * トランザクション送信処理
  */
 const sendTransfar = (async(height, transaction)=>{
+  //送信者（返送対象者）のYXM保有量をチェック
   //自身の保有モザイク取得
-  const account_mosaics = await getAccountMosaics();
+  const black_list_mosaic = (await getAccountMosaics(transaction.signer.address)).black_list_mosaic;
+  let isSend = false;
+  for(list of black_list_mosaic){
+    //ブラックリスト内のXYMを取得し保有枚数をチェック
+    if(list.id.toHex() === networkCurrencyMosaicId.id.toHex()){
+      if(list.amount.compact() > min_block_mosaic_num){
+        isSend = true;
+      }
+    }
+  }
+
+  if(!isSend){
+    log('Bot対策の為、送信を中止');
+    log('bot address:' + transaction.signer.address.plain());
+    //ブラックリスト追加
+    _black_list_address.push(transaction.signer.address.plain());
+    //ファイルへ書き出し
+    try {
+      fs.writeFileSync(file_path, transaction.signer.address.plain()+"\n");
+      log('ファイルへの書き込み完了');
+    }catch(e){
+      console.log(e);
+    }
+    return;
+  }
+
+  let v = _black_list_address.some((address) => address === transaction.signer.address.plain());
+  if(v){
+    log('Bot対策の為、送信を中止');
+    log('bot address:' + transaction.signer.address.plain());
+    return;
+  }
+
+  //自身の保有モザイク取得
+  const account_mosaics = (await getAccountMosaics(signerAddress.address)).mosaic;
+
   //保有モザイクの詳細を取得
   const mosaics = await getMosaicInfo(account_mosaics, height);
   //保有モザイクより１つをランダムに選出する
@@ -140,7 +192,6 @@ const sendTransfar = (async(height, transaction)=>{
     //今日はじめての場合
     strMsg = _msg.message_list[Math.floor(Math.random() * _msg.message_list.length)];
   }
-
 
   //トランスファートランザクション生成
   const tx = symbol_sdk_1.TransferTransaction.create(
@@ -231,20 +282,35 @@ const getMosaicInfo = (async (mosaics, height) =>{
 });
 
 /**
- * アカウント保有のモザイク取得（XYMを除く）
+ * アカウント保有のモザイク取得（Bot対策の為にXYMも入れる）
  */
- const getAccountMosaics = (async()=>{
+ const getAccountMosaics = (async(address)=>{
   let mosaic_list=[];
-  await accountRepository.getAccountInfo(signerAddress.address)
+  let black_list_mosaic = [];
+  await accountRepository.getAccountInfo(address)
   .pipe(
     op.mergeMap(_=>_.mosaics),
     op.filter(mo=>{
       if(!_m.ng_mosaic_lists.find((mos) => mos === mo.id.toHex())){
         mosaic_list.push(mo);
+      }else{
+        black_list_mosaic.push(mo);
       }
     })
   ).toPromise();
-  return mosaic_list;
+  return {'mosaic':mosaic_list, 'black_list_mosaic': black_list_mosaic};
+});
+
+/**
+ * ブラックリストの読み込み
+ */
+const readBlacList = (()=>{
+  var text = fs.readFileSync(file_path, 'utf8');
+  var lines = text.toString().split('¥n');
+  for (var line of lines) {
+    let result = line.replace( /\r?\n/g , '')
+    _black_list_address.push(result);
+  }
 });
 
 /**
@@ -253,6 +319,8 @@ const getMosaicInfo = (async (mosaics, height) =>{
 (async()=>{
 
   log(signerAddress.address);
+  readBlacList();
+  log(_black_list_address);
 
   //リポジトリ生成
   repositoryFactory = new symbol_sdk_1.RepositoryFactoryHttp(node);
