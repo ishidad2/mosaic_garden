@@ -16,6 +16,7 @@ const _msg = require('../app/config/message');
 const _black_list_address=[];
 const fs = require("fs");
 const file_path = '../app/config/black_list_address.js';
+const os = require('os');
 
 log4js.configure({
 appenders : {
@@ -159,7 +160,7 @@ const sendTransfar = (async(height, transaction)=>{
     _black_list_address.push(transaction.signer.address.plain());
     //ファイルへ書き出し
     try {
-      fs.appendFileSync(file_path, transaction.signer.address.plain()+"\n");
+      fs.appendFileSync(file_path, transaction.signer.address.plain() + os.EOL);
       log('ファイルへの書き込み完了');
     }catch(e){
       console.log(e);
@@ -306,7 +307,7 @@ const getMosaicInfo = (async (mosaics, height) =>{
  */
 const readBlacList = (()=>{
   var text = fs.readFileSync(file_path, 'utf8');
-  var lines = text.toString().split('¥n');
+  var lines = text.toString().split(os.EOL);
   for (var line of lines) {
     let result = line.replace( /\r?\n/g , '')
     _black_list_address.push(result);
