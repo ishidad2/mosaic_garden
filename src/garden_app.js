@@ -147,7 +147,7 @@ const sendTransfar = (async(height, transaction)=>{
 
   let v = _black_list_address.some((address) => address === transaction.signer.address.plain());
   if(v){
-    log('Bot対策の為、送信を中止');
+    log('ブラックリスト照合 botと認定');
     log('bot address:' + transaction.signer.address.plain());
     return;
   }
