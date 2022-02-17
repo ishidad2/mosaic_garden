@@ -152,7 +152,7 @@ const sendTransfar = (async(height, transaction)=>{
     _black_list_address.push(transaction.signer.address.plain());
     //ファイルへ書き出し
     try {
-      fs.writeFileSync(file_path, transaction.signer.address.plain()+"\n");
+      fs.appendFileSync(file_path, transaction.signer.address.plain()+"\n");
       log('ファイルへの書き込み完了');
     }catch(e){
       console.log(e);
