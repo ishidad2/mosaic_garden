@@ -221,7 +221,9 @@ const send_mosaic_num = ((mosaic)=>{
   //保有数が1以下のモザイクは送信対象から外してあるので、保有数に応じて1～maxまでのモザイク量を返す
   const amount = mosaic.mosaic.amount.compact() / Math.pow(10, mosaic.info.divisibility);
   let rate = 1;
-  if(amount <= 50){
+  if(amount === 1){
+    rate = 1;
+  }else if(amount <= 50){
     rate = Math.floor(Math.random() * (amount/2));
     log(2);
   }else if(amount <= 100){
@@ -249,7 +251,12 @@ function getRandomArbitrary(min, max) {
   return Math.random() * (max - min) + min;
 }
 
-
+/**
+ * Gardenアドレスの保有モザイクを取得
+ * @param {*} mosaics 
+ * @param {*} height 
+ * @returns 
+ */
 const getMosaicInfo = (async (mosaics, height) =>{
   let res = [];
   for(let mosaic of mosaics){
@@ -280,6 +287,13 @@ const getMosaicInfo = (async (mosaics, height) =>{
     
   }
   return res;
+});
+
+/**
+ * モザイクのメタデータ解析
+ */
+const parseMosaicMetadata = ((mosaic)=>{
+  log(mosaic);
 });
 
 /**
