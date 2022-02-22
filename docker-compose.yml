@@ -11,12 +11,14 @@ services:
       - db
     links:
       - db
+    networks:
+      - backend
   db:                           # DBサーバ用コンテナ
     build: ./docker/mysql
     volumes:
       - db-store:/var/lib/mysql
       - ./src/logs:/var/log/mysql
-      - ./docker/mysql/db:/root
+      - ./src/db:/root
     ports:
       - "3306:3306"
     environment:
@@ -25,6 +27,11 @@ services:
       - MYSQL_PASSWORD=pass
       - MYSQL_ROOT_PASSWORD=pass
       - TZ=Asia/Tokyo
+    networks:
+      - backend
 
 volumes:
   db-store:
+
+networks:
+  backend:
