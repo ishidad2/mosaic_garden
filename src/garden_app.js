@@ -58,6 +58,7 @@ function log(obj){
 const newBlock = (async(block) => {
   //受信
   log('block:'+block.height);
+  _m = await BlackMosaicList.findAll();
   //モザイクのブラックリスト取得
   transactionRepository.search({
     address: signerAddress.address,
@@ -66,7 +67,6 @@ const newBlock = (async(block) => {
   })
   .subscribe(_ =>{
     if(_.data.length > 0){
-      _m = await BlackMosaicList.findAll();
       const transaction = _.data;
       transaction.forEach((tx) => {
         let isMosaic = false;
