@@ -225,15 +225,16 @@ function getRandomArbitrary(min, max) {
 const getMosaicInfo = (async (mosaics, height) =>{
   let res = [];
   for(let mosaic of mosaics){
+    //TODO 転送不可を弾く処理を追加する
     //モザイクの詳細
     const mosaicId = new symbol_sdk_1.MosaicId(mosaic.id.toHex());
     const mosaicInfo = await mosaicRepository.getMosaic(mosaicId).toPromise();
     const duration = mosaicInfo.duration.compact();
-    if(duration === 0){
-      //0期限なし
+    if(duration === 0 && mosaicInfo.flags.transferable){
+      //0期限なしかつ転送可
       const amount = mosaic.amount.compact() / Math.pow(10, mosaicInfo.divisibility);
       log('保有モザイク:'+mosaic.id.toHex() + '保有数:'+amount);
-      if(amount >= 1){
+      if(amount > 1){
         //保有数が1以上のもののみ追加
         res.push({'mosaic': mosaic, 'info': mosaicInfo});
       }
@@ -242,8 +243,8 @@ const getMosaicInfo = (async (mosaics, height) =>{
       const limit = mosaicInfo.duration.compact()+mosaicInfo.startHeight.compact();
       if(height <= limit){
         const amount = mosaic.amount.compact() / Math.pow(10, mosaicInfo.divisibility);
-        log('保有モザイク:'+mosaic.id.toHex() + '保有数:'+amount);
-        if(amount >= 1){
+        if(amount > 1 && mosaicInfo.flags.transferable){
+          log('保有モザイク:'+mosaic.id.toHex() + '保有数:'+amount);
           //保有数が1以上のもののみ追加
           res.push({'mosaic': mosaic, 'info': mosaicInfo});
         }
