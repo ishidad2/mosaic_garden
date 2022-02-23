@@ -4,4 +4,4 @@
 /log/*
 !/logs/.keep
 /logs/*
-/db/config/config.json.org
+/db/config/config.json
