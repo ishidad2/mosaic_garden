@@ -10,9 +10,9 @@ dayjs.tz.setDefault('Asia/Tokyo');
 const logger = log4js.getLogger('system');
 const symbol_sdk_1 = require('symbol-sdk');
 const op = require('rxjs');
-const BlackMosaicList = require('./db/models').GardenBlackMosaicLists;
-const TxList =require('./db/models').GardenTransactionLists;
-const Message =require('./db/models').GardenMessage;
+const BlackMosaicList = require('./models').GardenBlackMosaicLists;
+const TxList =require('./models').GardenTransactionLists;
+const Message =require('./models').GardenMessage;
 
 log4js.configure({
 appenders : {
