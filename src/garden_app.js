@@ -14,8 +14,6 @@ const BlackMosaicList = require('./db/models').GardenBlackMosaicLists;
 const TxList =require('./db/models').GardenTransactionLists;
 const Message =require('./db/models').GardenMessage;
 
-const _m = require('../app/config/nglist');
-
 log4js.configure({
 appenders : {
   system : {
@@ -32,7 +30,7 @@ let transactionRepository;
 let accountRepository;
 let mosaicRepository;
 let networkRepository;
-
+let _m;
 let medianFeeMultiplier; //手数料乗数
 
 if(process.env.TYPE === "MAIN_NET"){
@@ -43,11 +41,7 @@ if(process.env.TYPE === "MAIN_NET"){
   networkType = symbol_sdk_1.NetworkType.TEST_NET;
 }
 
-const networkCurrencyMosaicId = new symbol_sdk_1.MosaicId(process.env.MOSAIC_ID);  //XYMモザイク
-const networkCurrencyDivisibility  = 6; //XYMモザイクの過分性
-const min_block_mosaic_num = 10 * Math.pow(10, networkCurrencyDivisibility);  //bot対策用の最小XYM保有枚数
 const transactionInterval = 2;  //インターバル
-
 const signerAddress = symbol_sdk_1.Account.createFromPrivateKey(process.env.CERTIFICATE_PRIVATE_KEY, networkType); //送信元アドレス
 
 /**
@@ -61,9 +55,10 @@ function log(obj){
 /**
  * 新規ブロック処理
  */
-const newBlock = ((block) => {
+const newBlock = (async(block) => {
   //受信
   log('block:'+block.height);
+  //モザイクのブラックリスト取得
   transactionRepository.search({
     address: signerAddress.address,
     height: block.height,
@@ -71,6 +66,7 @@ const newBlock = ((block) => {
   })
   .subscribe(_ =>{
     if(_.data.length > 0){
+      _m = await BlackMosaicList.findAll();
       const transaction = _.data;
       transaction.forEach((tx) => {
         let isMosaic = false;
@@ -79,7 +75,7 @@ const newBlock = ((block) => {
             //受信
             tx.mosaics.forEach(mosaic => {
               //複数のモザイクを検証 ブラックリスト以外のモザイクがあればOK
-              if(!_m.ng_mosaic_lists.find((mos) => mos === mosaic.id.toHex()) && mosaic.amount.compact() !== 0){ isMosaic = true; }
+              if(!_m.find((mos) => mos.mosaic_id === mosaic.id.toHex()) && mosaic.amount.compact() !== 0){ isMosaic = true; }
             });
             if(isMosaic){
               sendTransfar(block.height, tx);
@@ -134,8 +130,7 @@ const sendTransfar = (async(height, transaction)=>{
   }
 
   //自身の保有モザイク取得
-  const account_mosaics = (await getAccountMosaics(signerAddress.address)).mosaic;
-
+  const account_mosaics = await getAccountMosaics(signerAddress.address);
   //保有モザイクの詳細を取得
   const mosaics = await getMosaicInfo(account_mosaics, height);
   //保有モザイクより１つをランダムに選出する
@@ -271,19 +266,16 @@ const parseMosaicMetadata = ((mosaic)=>{
  */
  const getAccountMosaics = (async(address)=>{
   let mosaic_list=[];
-  let black_list_mosaic = [];
   await accountRepository.getAccountInfo(address)
   .pipe(
     op.mergeMap(_=>_.mosaics),
     op.filter(mo=>{
-      if(!_m.ng_mosaic_lists.find((mos) => mos === mo.id.toHex())){
+      if(!_m.find((mos) => mos.mosaic_id === mo.id.toHex())){
         mosaic_list.push(mo);
-      }else{
-        black_list_mosaic.push(mo);
       }
     })
   ).toPromise();
-  return {'mosaic':mosaic_list, 'black_list_mosaic': black_list_mosaic};
+  return mosaic_list;
 });
 
 /**

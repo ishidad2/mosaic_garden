@@ -25,7 +25,7 @@ module.exports = {
       {message_js: '【小吉】 言いたいことは明日言え', message_en: '', createdAt: now, updatedAt: now},
       {message_js: '【小吉】 行きはよいよい帰りは怖い', message_en: '', createdAt: now, updatedAt: now},
       {message_js: '【笑吉】 当たるも八卦当たらぬも八卦', message_en: '', createdAt: now, updatedAt: now},
-    ], []); 
+    ], []);
   },
 
   async down (queryInterface, Sequelize) {
