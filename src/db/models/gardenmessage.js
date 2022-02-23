@@ -12,6 +12,12 @@ module.exports = (sequelize, DataTypes) => {
     static associate(models) {
       // define association here
     }
+    static async getMessage(){
+      return await this.findAll({
+        order: sequelize.random(),
+        limit: 1
+      })
+    }
   }
   GardenMessage.init({
     message_js: DataTypes.STRING,

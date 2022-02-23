@@ -11,10 +11,10 @@ const logger = log4js.getLogger('system');
 const symbol_sdk_1 = require('symbol-sdk');
 const op = require('rxjs');
 const BlackMosaicList = require('./db/models').GardenBlackMosaicLists;
-const txList =require('./db/models').GardenTransactionLists;
+const TxList =require('./db/models').GardenTransactionLists;
+const Message =require('./db/models').GardenMessage;
 
 const _m = require('../app/config/nglist');
-const _msg = require('../app/config/message');
 
 log4js.configure({
 appenders : {
@@ -92,65 +92,44 @@ const newBlock = ((block) => {
 });
 
 /**
- * 指定時間以上のアクセス間隔があるかどうか（diffは分数）
+ * 指定時間以上のアクセス間隔があるかどうか（diffは分数）,本日の送信状況
  * @param {*} address 
- * @param {*} interval 
  * @returns
  */
-const is_interval = (async (address, interval) => {
+const is_interval = (async (address) => {
+  let res = {diff: true, isToday: true};
   const now = dayjs().tz();
-  const lastAccess = await txList.last(address);
-  if(lastAccess.length > 0){
+  const lastAccess = await TxList.last(address);
+  //DBに値がない場合（初）
+  if(!lastAccess) return res;
+  if(lastAccess.length > 0 ){
     const txDateTime = dayjs(lastAccess[0].createdAt).tz();
     log("最終トランザクション:" + txDateTime.format('YYYY-MM-DD hh:mm:ss') + " now:" + now.format('YYYY-MM-DD hh:mm:ss'));
     //日付の比較
     const diff = now.diff(txDateTime, 'minute');
     log("前回アクセスより:" + diff + "分");
-    if(interval <= diff){
-      return true;
-    };
-    return false
-  }
-  return false;
-})
-
-/**
- * 本日の送信状況
- */
-const isToday = (async(address)=>{
-  const now = dayjs().tz();
-  const lastData = await txList.last(address);
-  if(lastData.length > 0){
-    log(lastData[0].createdAt);
-    const txDateTime = dayjs(lastData[0].createdAt).tz();
-    log("最終トランザクション:" + txDateTime.format('YYYY-MM-DD hh:mm:ss') + " now:"+now.format('YYYY-MM-DD hh:mm:ss'));
+    if(transactionInterval <= diff){
+      res.diff =  true;
+    }else{
+      res.diff = false
+    }
     //日付の比較
-    log(txDateTime.isBefore(now, 'day'));
-    return txDateTime.isBefore(now, 'day');
+    res.isToday =  txDateTime.isBefore(now, 'day');
   }
-  return true;
-});
+  log(res);
+  return res;
+})
 
 /**
  * トランザクション送信処理
  */
 const sendTransfar = (async(height, transaction)=>{
-  //送信者（返送対象者）のYXM保有量をチェック
-  //自身の保有モザイク取得
-  const black_list_mosaic = (await getAccountMosaics(transaction.signer.address)).black_list_mosaic;
-  let isSend = false;
-  for(list of black_list_mosaic){
-    //ブラックリスト内のXYMを取得し保有枚数をチェック
-    if(list.id.toHex() === networkCurrencyMosaicId.id.toHex()){
-      if(list.amount.compact() > min_block_mosaic_num){
-        isSend = true;
-      }
-    }
-  }
-
+  log('送信処理実行')
   //指定時間以上の空きが必要
-  if(!await is_interval(transaction.signer.address.plain(), transactionInterval)){
+  const isSender = await is_interval(transaction.signer.address.plain());
+  if(!isSender.diff){
     //中止
+    log('送信中止');
     return;
   }
 
@@ -174,12 +153,12 @@ const sendTransfar = (async(height, transaction)=>{
   //generationHashの取得
   const networkGenerationHash = await repositoryFactory.getGenerationHash().toPromise();
 
-  let strMsg = "";
-  if(await isToday(transaction.signer.address.plain())){
+  let strMsg = "【MosaicGarden】";
+  if(isSender.isToday){
     //今日はじめての場合
-    strMsg = _msg.message_list[Math.floor(Math.random() * _msg.message_list.length)] + " ";
+    strMsg += (await Message.getMessage())[0].message_js + " ";
   }
-  strMsg += "【MosaicGarden】The next lottery can be held after " + dayjs().tz().add((transactionInterval + 1), 'm').format('HH:mm') + ".";
+  strMsg += "The next lottery can be held after " + dayjs().tz().add((transactionInterval + 1), 'm').format('HH:mm') + ".";
 
   //トランスファートランザクション生成
   const tx = symbol_sdk_1.TransferTransaction.create(
@@ -199,7 +178,7 @@ const sendTransfar = (async(height, transaction)=>{
   transactionRepository.announce(signedtxd).subscribe((x)=>log(x),(er)=>log(er));
 
   //トランザクション履歴に保存
-  await txList.create({
+  await TxList.create({
     address : transaction.signer.address.plain(),
   });
 });
@@ -312,7 +291,6 @@ const parseMosaicMetadata = ((mosaic)=>{
 */
 (async()=>{
 
-  log(await is_interval('TDFW5JTEZBWIIL6IM5AO27TMIYIUELH2UDMI56A',2));
   log(signerAddress.address);
 
   //リポジトリ生成
