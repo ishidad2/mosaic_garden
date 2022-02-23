@@ -10,13 +10,11 @@ dayjs.tz.setDefault('Asia/Tokyo');
 const logger = log4js.getLogger('system');
 const symbol_sdk_1 = require('symbol-sdk');
 const op = require('rxjs');
+const BlackMosaicList = require('./db/models').GardenBlackMosaicLists;
+const txList =require('./db/models').GardenTransactionLists;
 
 const _m = require('../app/config/nglist');
 const _msg = require('../app/config/message');
-const _black_list_address=[];
-const fs = require("fs");
-const file_path = '../app/config/black_list_address.js';
-const os = require('os');
 
 log4js.configure({
 appenders : {
@@ -34,7 +32,6 @@ let transactionRepository;
 let accountRepository;
 let mosaicRepository;
 let networkRepository;
-let blockRepository;
 
 let medianFeeMultiplier; //手数料乗数
 
@@ -49,6 +46,7 @@ if(process.env.TYPE === "MAIN_NET"){
 const networkCurrencyMosaicId = new symbol_sdk_1.MosaicId(process.env.MOSAIC_ID);  //XYMモザイク
 const networkCurrencyDivisibility  = 6; //XYMモザイクの過分性
 const min_block_mosaic_num = 10 * Math.pow(10, networkCurrencyDivisibility);  //bot対策用の最小XYM保有枚数
+const transactionInterval = 2;  //インターバル
 
 const signerAddress = symbol_sdk_1.Account.createFromPrivateKey(process.env.CERTIFICATE_PRIVATE_KEY, networkType); //送信元アドレス
 
@@ -94,39 +92,43 @@ const newBlock = ((block) => {
 });
 
 /**
+ * 指定時間以上のアクセス間隔があるかどうか（diffは分数）
+ * @param {*} address 
+ * @param {*} interval 
+ * @returns
+ */
+const is_interval = (async (address, interval) => {
+  const now = dayjs().tz();
+  const lastAccess = await txList.last(address);
+  if(lastAccess.length > 0){
+    const txDateTime = dayjs(lastAccess[0].createdAt).tz();
+    log("最終トランザクション:" + txDateTime.format('YYYY-MM-DD hh:mm:ss') + " now:" + now.format('YYYY-MM-DD hh:mm:ss'));
+    //日付の比較
+    const diff = now.diff(txDateTime, 'minute');
+    log("前回アクセスより:" + diff + "分");
+    if(interval <= diff){
+      return true;
+    };
+    return false
+  }
+  return false;
+})
+
+/**
  * 本日の送信状況
  */
-const isToday = (async(tx, epochAdjustment)=>{
-  //リポジトリからデータを取得
-  const histories = await transactionRepository.search({
-    recipientAddress: tx.signer.address,
-    group: symbol_sdk_1.TransactionGroup.Confirmed,
-    order: 'desc',
-  }).toPromise();
-  if(histories.data.length < 1){
-    return true;
-  }else{
-    let data=null;
-    for(hitstory of histories.data){
-      //対象者の履歴からGardenアドレスへの送受信の履歴を取得
-      if(hitstory.signer.address.plain() === signerAddress.address.plain()){
-        data = hitstory;
-        break;
-      }
-    }
-    
-    if(data === null) return false;
-    //過去の履歴よりGardenアドレスへの送信日時を調査
-    const txTimestamp = (await blockRepository.getBlockByHeight(data.transactionInfo.height).toPromise()).timestamp.compact();
-    const txDateTime = dayjs(txTimestamp + epochAdjustment * 1000).tz();
-    log(data.transactionInfo.height + " : " + txDateTime.format('YYYY-MM-DD hh:mm:ss'));
-    // const txDateTime = dayjs('2022-02-14').tz();
-    const now = dayjs().tz();
+const isToday = (async(address)=>{
+  const now = dayjs().tz();
+  const lastData = await txList.last(address);
+  if(lastData.length > 0){
+    log(lastData[0].createdAt);
+    const txDateTime = dayjs(lastData[0].createdAt).tz();
+    log("最終トランザクション:" + txDateTime.format('YYYY-MM-DD hh:mm:ss') + " now:"+now.format('YYYY-MM-DD hh:mm:ss'));
     //日付の比較
-    log("Gardenアドレスへの直近Txが今日に含まれているかどうか: ");
     log(txDateTime.isBefore(now, 'day'));
     return txDateTime.isBefore(now, 'day');
   }
+  return true;
 });
 
 /**
@@ -146,25 +148,9 @@ const sendTransfar = (async(height, transaction)=>{
     }
   }
 
-  let v = _black_list_address.some((address) => address === transaction.signer.address.plain());
-  if(v){
-    log('ブラックリスト照合 botと認定');
-    log('bot address:' + transaction.signer.address.plain());
-    return;
-  }
-
-  if(!isSend){
-    log('Bot対策の為、送信を中止');
-    log('bot address:' + transaction.signer.address.plain());
-    //ブラックリスト追加
-    _black_list_address.push(transaction.signer.address.plain());
-    //ファイルへ書き出し
-    try {
-      fs.appendFileSync(file_path, transaction.signer.address.plain() + os.EOL);
-      log('ファイルへの書き込み完了');
-    }catch(e){
-      console.log(e);
-    }
+  //指定時間以上の空きが必要
+  if(!await is_interval(transaction.signer.address.plain(), transactionInterval)){
+    //中止
     return;
   }
 
@@ -189,10 +175,11 @@ const sendTransfar = (async(height, transaction)=>{
   const networkGenerationHash = await repositoryFactory.getGenerationHash().toPromise();
 
   let strMsg = "";
-  if(await isToday(transaction, epochAdjustment)){
+  if(await isToday(transaction.signer.address.plain())){
     //今日はじめての場合
-    strMsg = _msg.message_list[Math.floor(Math.random() * _msg.message_list.length)];
+    strMsg = _msg.message_list[Math.floor(Math.random() * _msg.message_list.length)] + " ";
   }
+  strMsg += "【MosaicGarden】The next lottery can be held after " + dayjs().tz().add((transactionInterval + 1), 'm').format('HH:mm') + ".";
 
   //トランスファートランザクション生成
   const tx = symbol_sdk_1.TransferTransaction.create(
@@ -211,6 +198,10 @@ const sendTransfar = (async(height, transaction)=>{
 
   transactionRepository.announce(signedtxd).subscribe((x)=>log(x),(er)=>log(er));
 
+  //トランザクション履歴に保存
+  await txList.create({
+    address : transaction.signer.address.plain(),
+  });
 });
 
 /**
@@ -317,25 +308,12 @@ const parseMosaicMetadata = ((mosaic)=>{
 });
 
 /**
- * ブラックリストの読み込み
- */
-const readBlacList = (()=>{
-  var text = fs.readFileSync(file_path, 'utf8');
-  var lines = text.toString().split(os.EOL);
-  for (var line of lines) {
-    let result = line.replace( /\r?\n/g , '')
-    _black_list_address.push(result);
-  }
-});
-
-/**
 * メイン処理
 */
 (async()=>{
 
+  log(await is_interval('TDFW5JTEZBWIIL6IM5AO27TMIYIUELH2UDMI56A',2));
   log(signerAddress.address);
-  readBlacList();
-  log(_black_list_address);
 
   //リポジトリ生成
   repositoryFactory = new symbol_sdk_1.RepositoryFactoryHttp(node);
@@ -343,10 +321,7 @@ const readBlacList = (()=>{
   transactionRepository = repositoryFactory.createTransactionRepository();
   accountRepository = repositoryFactory.createAccountRepository();
   mosaicRepository = repositoryFactory.createMosaicRepository();
-  blockRepository = repositoryFactory.createBlockRepository();
-
   medianFeeMultiplier = (await networkRepository.getTransactionFees().toPromise()).medianFeeMultiplier;
-  console.log(medianFeeMultiplier);
   
   //リスナー生成
   const listener = repositoryFactory.createListener();

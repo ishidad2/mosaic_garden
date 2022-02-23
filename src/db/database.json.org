@@ -1,8 +1,0 @@
-{
-  "dev": {
-      "driver": "db",
-      "user": "root", 
-      "password": "pass",
-      "database": "vl_develop"
-  }
-}
