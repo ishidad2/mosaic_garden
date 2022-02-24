@@ -188,6 +188,7 @@ const send_mosaic_num = ((mosaic)=>{
   let rate = 1;
   if(amount >= 2 && amount <=10){
     rate = 1;
+    log(1);
   }else if(amount <= 50){
     rate = Math.floor(Math.random() * (amount/2));
     log(2);
