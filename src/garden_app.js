@@ -186,7 +186,7 @@ const send_mosaic_num = ((mosaic)=>{
   //保有数が1以下のモザイクは送信対象から外してあるので、保有数に応じて1～maxまでのモザイク量を返す
   const amount = mosaic.mosaic.amount.compact() / Math.pow(10, mosaic.info.divisibility);
   let rate = 1;
-  if(amount === 1){
+  if(amount >= 2 && amount <=10){
     rate = 1;
   }else if(amount <= 50){
     rate = Math.floor(Math.random() * (amount/2));
