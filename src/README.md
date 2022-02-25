@@ -42,3 +42,23 @@ npx sequelize-cli db:seed:all
 ```
 npx sequelize-cli db:migrate:undo:all
 ```
+
+## メタデータ説明
+
+以下のフォーマットでモザイクのメタデータに配布時期、配布枚数を設定することが出来る
+
+```
+{
+  "mosaic_id":"616A7782D30DEEB8",
+  "dist_num":10,
+  "open_date":"2022-02-25",
+  "close_date":"2022-02-25",
+  "scope":1
+}
+```
+
+* mosaic_id: 対象となるモザイクID（設定するモザイクと同等のもの、モザイクIDとここの値が違う場合は配布を行わない）
+* dist_num: 1回の返送時に送る枚数（整数で指定）
+* open_date: 開始日（当日含む）
+* close_date: 終了日（当日含む）
+* scope: 0を指定すると開始・終了を無視して継続、1を指定すると開始・終了に沿って配布
