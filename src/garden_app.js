@@ -7,12 +7,13 @@ const dayjs = require('dayjs');
 dayjs.extend(require('dayjs/plugin/timezone'));
 dayjs.extend(require('dayjs/plugin/utc'));
 dayjs.tz.setDefault('Asia/Tokyo');
+dayjs.extend(require('dayjs/plugin/isBetween'));
 const logger = log4js.getLogger('system');
 const symbol_sdk_1 = require('symbol-sdk');
 const op = require('rxjs');
 const BlackMosaicList = require('./models').GardenBlackMosaicLists;
-const TxList =require('./models').GardenTransactionLists;
-const Message =require('./models').GardenMessage;
+const TxList = require('./models').GardenTransactionLists;
+const Message = require('./models').GardenMessage;
 
 log4js.configure({
 appenders : {
@@ -30,6 +31,7 @@ let transactionRepository;
 let accountRepository;
 let mosaicRepository;
 let networkRepository;
+let metadataHttp;
 let _m;
 let medianFeeMultiplier; //手数料乗数
 
@@ -130,11 +132,10 @@ const sendTransfar = (async(height, transaction)=>{
   }
 
   //自身の保有モザイク取得
-  const account_mosaics = await getAccountMosaics(signerAddress.address);
-  //保有モザイクの詳細を取得
-  const mosaics = await getMosaicInfo(account_mosaics, height);
+  const account_mosaics = await getMosaicGardenAccountMosaics(height);
+
   //保有モザイクより１つをランダムに選出する
-  const mosaic = mosaics[Math.floor(Math.random() * mosaics.length)];
+  const mosaic = account_mosaics[Math.floor(Math.random() * account_mosaics.length)];
 
   //選出したモザイクから保有数を基準に送信する量を決定
   const mosaic_id = mosaic.mosaic.id.toHex();
@@ -202,8 +203,13 @@ const send_mosaic_num = ((mosaic)=>{
     rate = Math.floor(Math.random() * 864);
     log(4);
   }
-  log("rate:"+rate);
   rand =  getRandomArbitrary(1, rate);
+  if(mosaic.value){
+    log(mosaic.value);
+    rand = mosaic.value.dist_num ? mosaic.value.dist_num : 1;
+    log("メタデータが設定されています value:"+rand);
+  }
+  log("rand:"+rand);
   if(mosaic.info.divisibility !== 0){
     res = rand.toFixed(mosaic.info.divisibility);
   }else{
@@ -218,67 +224,120 @@ function getRandomArbitrary(min, max) {
 }
 
 /**
- * Gardenアドレスの保有モザイクを取得
- * @param {*} mosaics 
- * @param {*} height 
+ * モザイクのメタデータを取得
+ * @param {*} mosaic 
  * @returns 
  */
-const getMosaicInfo = (async (mosaics, height) =>{
-  let res = [];
-  for(let mosaic of mosaics){
-    //TODO 転送不可を弾く処理を追加する
-    //モザイクの詳細
-    const mosaicId = new symbol_sdk_1.MosaicId(mosaic.id.toHex());
-    const mosaicInfo = await mosaicRepository.getMosaic(mosaicId).toPromise();
-    const duration = mosaicInfo.duration.compact();
-    if(duration === 0 && mosaicInfo.flags.transferable){
-      //0期限なしかつ転送可
-      const amount = mosaic.amount.compact() / Math.pow(10, mosaicInfo.divisibility);
-      log('保有モザイク:'+mosaic.id.toHex() + '保有数:'+amount);
-      if(amount > 1){
-        //保有数が1以上のもののみ追加
-        res.push({'mosaic': mosaic, 'info': mosaicInfo});
+ const getMosaicMetadata = (async(mosaic) => {
+  let res = null;
+  const searchCriteria = {
+    targetId: mosaic.id,
+    metadataType: symbol_sdk_1.MetadataType.Mosaic,
+  };
+  const metadataEntries = await metadataHttp.search(searchCriteria).toPromise();
+  for(entry of metadataEntries.data){
+    const metadataEntry = entry.metadataEntry;
+    try{
+      res = JSON.parse(symbol_sdk_1.Convert.decodeHex(metadataEntry.value));
+      dayjs(res.open_date).tz();
+      dayjs(res.close_date).tz();
+      Number(res.dist_num);
+      Number(res.scope);
+      if(res.mosaic_id === mosaic.id.toHex()){
+        break;
       }
-    }else{
-      //期限あり
-      const limit = mosaicInfo.duration.compact()+mosaicInfo.startHeight.compact();
-      if(height <= limit){
-        const amount = mosaic.amount.compact() / Math.pow(10, mosaicInfo.divisibility);
-        if(amount > 1 && mosaicInfo.flags.transferable){
-          log('保有モザイク:'+mosaic.id.toHex() + '保有数:'+amount);
-          //保有数が1以上のもののみ追加
-          res.push({'mosaic': mosaic, 'info': mosaicInfo});
-        }
-      }
+    }catch(e){
+      log('JSON parse error => ' + e);
     }
-    
+  }
+  return res; 
+})
+
+/**
+ * メタデータで制限されたモザイクと期限切れモザイクを除くモザイクの詳細を取得
+ * @param {*} mosaic 
+ * @param {*} height ブロック高
+ */
+const getMosaicInfo = (async(mosaic, height)=>{
+  const now = dayjs().tz();
+  //モザイクのメタデータ取得
+  const metadata = await getMosaicMetadata(mosaic);
+  //モザイクの詳細取得
+  const mosaicId = new symbol_sdk_1.MosaicId(mosaic.id.toHex());
+  const mosaicInfo = await mosaicRepository.getMosaic(mosaicId).toPromise();
+  //モザイクの期限　0:期限なし それ以外:期限あり
+  const duration = mosaicInfo.duration.compact();
+
+  if(duration !== 0){
+    //モザイクの期限を取得
+    const limit = mosaicInfo.duration.compact()+mosaicInfo.startHeight.compact();
+    if(height >= limit) {
+      log("モザイクの期限切れ");
+      return null;  //期限切れ
+    }
+  }
+  //転送可能かどうか
+  if(!mosaicInfo.flags.transferable){
+    //自身の作成したモザイクかどうか
+    if(mosaicInfo.ownerAddress.plain() !== signerAddress.address.plain()) {
+      log("転送不可設定で自身が作成したモザイクではありません");
+      return null;
+    }
+  }
+  
+  //ブラックリストモザイクのチェック
+  if(_m.find((mos) => mos.mosaic_id === mosaic.id.toHex())){
+    log("ブラックリストに登録されているモザイクです");
+    return null;
+  }
+
+  //保有数のチェック
+  const amount = mosaic.amount.compact() / Math.pow(10, mosaicInfo.divisibility);
+  if(amount < 1){
+    log("モザイク保有枚数不足です");
+    return null;
+  }
+ 
+  //メタデータが設定されてる場合
+  if(metadata){
+    //イベントスコープが設定されてるかどうか 0:無期限 1:期限あり
+    log('イベントスコープ:'+metadata.scope);
+    if(metadata.scope !== 0){
+      //終了日が開始日より後かどうかのチェック
+      const from = dayjs(metadata.open_date).tz();
+      const to = dayjs(metadata.close_date).tz();
+      if(from.valueOf() > to.valueOf()){
+        log("終了日または開始日が不正です("+metadata.mosaic_id+")");
+        log('開始日:'+from.format("YYYY-MM-DD"));
+        log('終了日:'+to.format("YYYY-MM-DD"));
+        return null;
+      }
+      if(!dayjs(now.format("YYYY-MM-DD")).isBetween(metadata.open_date, metadata.close_date,null, '[]')){
+        log(mosaic.id.toHex() + " は配布期限外です！");
+        return null;
+      }
+    }    
+    log(mosaic.id.toHex()+" は配れます")
+  }
+
+  return {'mosaic': mosaic, 'info': mosaicInfo, "value": metadata};
+});
+
+/**
+ * モザイクガーデンの保有モザイクを取得
+ * ブラックリスト登録されてるものは除外
+ * メタデータに枚数が登録されてるものは枚数を追記
+ */
+const getMosaicGardenAccountMosaics = (async(height)=>{
+  let res = [];
+  const mosaics = (await accountRepository.getAccountInfo(signerAddress.address).toPromise()).mosaics;
+  for await (let mosaic of mosaics){
+    const info = await getMosaicInfo(mosaic, height)
+    if(info) res.push(info);
   }
   return res;
 });
 
-/**
- * モザイクのメタデータ解析
- */
-const parseMosaicMetadata = ((mosaic)=>{
-  log(mosaic);
-});
-
-/**
- * アカウント保有のモザイク取得（Bot対策の為にXYMも入れる）
- */
- const getAccountMosaics = (async(address)=>{
-  let mosaic_list=[];
-  await accountRepository.getAccountInfo(address)
-  .pipe(
-    op.mergeMap(_=>_.mosaics),
-    op.filter(mo=>{
-      if(!_m.find((mos) => mos.mosaic_id === mo.id.toHex())){
-        mosaic_list.push(mo);
-      }
-    })
-  ).toPromise();
-  return mosaic_list;
-});
 
 /**
 * メイン処理
@@ -293,6 +352,7 @@ const parseMosaicMetadata = ((mosaic)=>{
   transactionRepository = repositoryFactory.createTransactionRepository();
   accountRepository = repositoryFactory.createAccountRepository();
   mosaicRepository = repositoryFactory.createMosaicRepository();
+  metadataHttp = repositoryFactory.createMetadataRepository();
   medianFeeMultiplier = (await networkRepository.getTransactionFees().toPromise()).medianFeeMultiplier;
   
   //リスナー生成
@@ -305,4 +365,3 @@ const parseMosaicMetadata = ((mosaic)=>{
     });
   }); 
 })();
-
