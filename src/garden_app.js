@@ -176,6 +176,9 @@ const sendTransfar = (async(height, transaction)=>{
   //トランザクション履歴に保存
   await TxList.create({
     address : transaction.signer.address.plain(),
+    mosaic_id: mosaic_id,
+    hash: signedtxd.hash,
+    mosaic_num: mosaic_num,
   });
 });
 

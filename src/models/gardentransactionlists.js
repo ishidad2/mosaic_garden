@@ -31,7 +31,10 @@ module.exports = (sequelize, DataTypes) => {
     }
   }
   GardenTransactionLists.init({
-    address: DataTypes.STRING
+    address: DataTypes.STRING,
+    mosaic_id: DataTypes.STRING,
+    hash: DataTypes.STRING,
+    mosaic_num: DataTypes.DOUBLE,
   }, {
     sequelize,
     modelName: 'GardenTransactionLists',
