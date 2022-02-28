@@ -133,7 +133,6 @@ const sendTransfar = (async(height, transaction)=>{
 
   //自身の保有モザイク取得
   const account_mosaics = await getMosaicGardenAccountMosaics(height);
-
   //保有モザイクより１つをランダムに選出する
   const mosaic = account_mosaics[Math.floor(Math.random() * account_mosaics.length)];
 
@@ -303,6 +302,10 @@ const getMosaicInfo = (async(mosaic, height)=>{
  
   //メタデータが設定されてる場合
   if(metadata){
+    if(metadata.mosaic_id !== mosaicInfo.id.toHex()){
+      log('モザイクに設定されているIDが異なります: ' + mosaicInfo.id.toHex());
+      return null;
+    }
     //イベントスコープが設定されてるかどうか 0:無期限 1:期限あり
     log('イベントスコープ:'+metadata.scope);
     if(metadata.scope !== 0){

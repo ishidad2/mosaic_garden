@@ -166,10 +166,10 @@ export default {
     copy(){
       navigator.clipboard.writeText(JSON.stringify(this.inputForm))
       .then(() => {
-          console.log("copied!")
+        alert("copied!");
       })
       .catch(e => {
-          console.error(e)
+        console.error(e);
       })
     }
   },
