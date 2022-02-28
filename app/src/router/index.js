@@ -1,22 +1,23 @@
 import Vue from 'vue'
 import VueRouter from 'vue-router'
-import Home from '../views/Home.vue'
 
 Vue.use(VueRouter)
 
 const routes = [
   {
-    path: '/mosaic_garden',
+    path: '/',
     name: 'Home',
-    component: Home
+    component: () => import('../views/MosaicCard.vue')
   },
   {
-    path: '/mosaic_garden/CreateMeta',
+    path: '/transaction',
+    name: 'Tx',
+    component: () => import('../views/Transaction.vue')
+  },
+  {
+    path: '/CreateMeta',
     name: 'Meta',
-    // route level code-splitting
-    // this generates a separate chunk (about.[hash].js) for this route
-    // which is lazy-loaded when the route is visited.
-    component: () => import(/* webpackChunkName: "about" */ '../views/Meta.vue')
+    component: () => import('../views/Meta.vue')
   }
 ]
 
