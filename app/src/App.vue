@@ -22,10 +22,10 @@
           <v-list-item>
             <v-list-item-content>
               <v-list-item-title>
-                <router-link to="/">Home</router-link>
+                <router-link to="/mosaic_garden">Home</router-link>
               </v-list-item-title>
               <v-list-item-title>
-                <router-link to="/CreateMeta">CreateMeta</router-link>
+                <router-link to="/mosaic_garden/CreateMeta">CreateMeta</router-link>
               </v-list-item-title>
             </v-list-item-content>
           </v-list-item>
