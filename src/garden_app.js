@@ -58,6 +58,7 @@ function log(obj){
  * 新規ブロック処理
  */
 const newBlock = (async(block) => {
+  let confirmAddress = [];
   //受信
   log('block:'+block.height);
   _m = await BlackMosaicList.findAll();
@@ -69,22 +70,28 @@ const newBlock = (async(block) => {
   })
   .subscribe(_ =>{
     if(_.data.length > 0){
+      log(_.data.length);
       const transaction = _.data;
-      transaction.forEach((tx) => {
+      for(tx of transaction){
         let isMosaic = false;
         if(tx.type === symbol_sdk_1.TransactionType.TRANSFER){
           if(tx.recipientAddress.plain() === signerAddress.address.plain()){
             //受信
             tx.mosaics.forEach(mosaic => {
               //複数のモザイクを検証 ブラックリスト以外のモザイクがあればOK
-              if(!_m.find((mos) => mos.mosaic_id === mosaic.id.toHex()) && mosaic.amount.compact() !== 0){ isMosaic = true; }
+              if(!_m.find((mos) => mos.mosaic_id === mosaic.id.toHex()) && mosaic.amount.compact() !== 0){
+                isMosaic = true;
+              }
             });
             if(isMosaic){
-              sendTransfar(block.height, tx);
+              if(confirmAddress.indexOf(tx.signer.address.plain()) === -1){
+                sendTransfar(block.height, tx);
+              }
+              confirmAddress.push(tx.signer.address.plain());
             }
           }
         }
-      });
+      }
     }
   });
 });
