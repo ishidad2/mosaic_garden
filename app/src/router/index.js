@@ -5,24 +5,24 @@ Vue.use(VueRouter)
 
 const routes = [
   {
-    path: '/mosaci_garden',
+    path: '',
     name: 'Home',
     component: () => import('../views/MosaicCard.vue')
   },
   {
-    path: '/mosaic_garden/transaction',
+    path: 'transaction',
     name: 'Tx',
     component: () => import('../views/Transaction.vue')
   },
   {
-    path: '/mosaic_garden/CreateMeta',
+    path: 'CreateMeta',
     name: 'Meta',
     component: () => import('../views/Meta.vue')
   }
 ]
 
 const router = new VueRouter({
-  mode: 'history',
+  mode: 'hash',
   base: process.env.BASE_URL,
   routes
 })
