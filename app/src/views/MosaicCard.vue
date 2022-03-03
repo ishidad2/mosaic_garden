@@ -9,7 +9,7 @@
             max-width="300"
           >
             <v-img
-              class="white--text align-end mosaic"
+              class="white--text align-end"
               height="100px"
               :src="mosaic.src"
             >
@@ -24,7 +24,16 @@
                 <template v-else>
                     No NameSpace
                 </template>
-
+              </div>
+              <div>
+                Metadata:<br>
+                <div v-for="(d, j) in mosaic.metadata" :key="j">
+                  <template>
+                    <div v-if="d.value">
+                      {{ dispMeta(d.value) }}
+                    </div>
+                  </template>
+                </div>
               </div>
             </v-card-text>
           </v-card>
@@ -41,9 +50,9 @@
 
 const NODE = "https://dual-1.nodes-xym.work:3001";
 const raw_address = "NB3YJ6FZ7CRZLMILAW4S6Y3ONUP5TG5GZXGFWNA";
+import * as d3 from "d3";
 
 import * as symbolSdk from 'symbol-sdk';
-import * as op from 'rxjs/operators';
 import {ng_mosaic_lists} from '../../config/nglist';
 
 export default {
@@ -53,16 +62,20 @@ export default {
       accountRepository: null,
       namespaceRepository: null,
       mosaicRepository: null,
+      metadataRepository: null,
       g_rawAddress: symbolSdk.Address.createFromRawAddress(raw_address),
       nglist: ng_mosaic_lists,
+      event_mosaics:[],
     }
   },
   created() {
     this.$nextTick(()=>{
+      console.log(d3);
       const repositoryFactory = new symbolSdk.RepositoryFactoryHttp(NODE);
       this.accountRepository = repositoryFactory.createAccountRepository();
       this.mosaicRepository = repositoryFactory.createMosaicRepository();
       this.namespaceRepository = repositoryFactory.createNamespaceRepository();
+      this.metadataRepository =  repositoryFactory.createMetadataRepository();;
       this.getAccountInfo(); 
     });
   },
@@ -73,9 +86,19 @@ export default {
         if(!this.nglist.find((mos) => mos === mosaic.id.toHex())){
           const mosaic_id = new symbolSdk.MosaicId(mosaic.id.toHex());
           const names =  await this.namespaceRepository.getMosaicsNames([mosaic_id]).toPromise();
-          this.mosaics.push({'mosaicName': names[0].names.length > 0 ? names[0].names[0].name : '', 'mosaic': mosaic});
+          const searchCriteria = {
+            targetId: mosaic_id,
+            metadataType: symbolSdk.MetadataType.Mosaic,
+          };
+          const metadataEntries = await this.metadataRepository.search(searchCriteria).toPromise();
+          let metadata=[];
+          for(let entry of metadataEntries.data){
+            const metadataEntry = entry.metadataEntry;
+            metadata.push(metadataEntry);
+          }
+          this.mosaics.push({'mosaicName': names[0].names.length > 0 ? names[0].names[0].name : '', 'mosaic': mosaic, 'metadata': metadata});
         }
-      });      
+      });
     },
     sliceByNumber: (array, number) => {
       const length = Math.ceil(array.length / number)
@@ -83,17 +106,9 @@ export default {
         array.slice(i * number, (i + 1) * number)
       )
     },
-    getMetadata(meta){
-      console.log(meta);
-
+    dispMeta(value){
+      return symbolSdk.Convert.decodeHex(value);
     }
   },
 }
 </script>
-
-<style scoped>
-.mosaic{
-	-ms-filter: blur(6px);
-	filter: blur(6px);
-}
-</style>
