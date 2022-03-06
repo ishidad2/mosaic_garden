@@ -38,10 +38,10 @@ module.exports = (sequelize, DataTypes) => {
      * 1日の総トランザクション数
      */
     static async todays_tx(){
-      const today = dayjs();
+      const today = dayjs().tz();
       return await this.findAll({
         where: {
-          createdAt: { [Op.between]: [today.startOf('day').format(), today.endOf('day').format()] }
+          createdAt: { [Op.between]: [today.subtract(1, 'day').format('YYYY-MM-DD 15:00:00'), today.format('YYYY-MM-DD 14:59:59')] }
         }
       });
     }
@@ -50,9 +50,9 @@ module.exports = (sequelize, DataTypes) => {
      * 1日の利用ユーザー
      */
      static async get_todays_users(){
-      const today = dayjs();
+      const today = dayjs().tz();
       return sequelize.query(
-        `SELECT count(DISTINCT address) as todays_count FROM GardenTransactionLists WHERE createdAt BETWEEN '${today.startOf('day').format()}' AND '${today.endOf('day').format()}'`,
+        `SELECT count(DISTINCT address) as todays_count FROM GardenTransactionLists WHERE createdAt BETWEEN '${today.subtract(1, 'day').format('YYYY-MM-DD 15:00:00')}' AND '${today.format('YYYY-MM-DD 14:59:59')}'`,
         { type: QueryTypes.SELECT });
     }
   }
