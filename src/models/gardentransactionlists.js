@@ -41,7 +41,7 @@ module.exports = (sequelize, DataTypes) => {
       const today = dayjs();
       return await this.findAll({
         where: {
-          createdAt: { [Op.between]: [today.format('YYYY-MM-DD 15:00:00'), today.add(1, 'day').format('YYYY-MM-DD 15:00:00')] }
+          createdAt: { [Op.between]: [today.startOf('day').format(), today.endOf('day').format()] }
         }
       });
     }
@@ -52,7 +52,7 @@ module.exports = (sequelize, DataTypes) => {
      static async get_todays_users(){
       const today = dayjs();
       return sequelize.query(
-        `SELECT count(DISTINCT address) as todays_count FROM GardenTransactionLists WHERE createdAt BETWEEN '${today.format('YYYY-MM-DD 15:00:00')}' AND '${today.add(1, 'day').format('YYYY-MM-DD 15:00:00')}'`,
+        `SELECT count(DISTINCT address) as todays_count FROM GardenTransactionLists WHERE createdAt BETWEEN '${today.startOf('day').format()}' AND '${today.endOf('day').format()}'`,
         { type: QueryTypes.SELECT });
     }
   }
