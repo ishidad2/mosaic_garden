@@ -260,7 +260,7 @@ function getRandomArbitrary(min, max) {
     }
   }
   return res; 
-})
+});
 
 /**
  * メタデータで制限されたモザイクと期限切れモザイクを除くモザイクの詳細を取得

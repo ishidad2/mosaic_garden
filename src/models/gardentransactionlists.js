@@ -1,4 +1,8 @@
 'use strict';
+const dayjs = require('dayjs');
+const Sequelize = require("sequelize")
+const { QueryTypes } = require('sequelize');
+const Op = Sequelize.Op
 const {
   Model
 } = require('sequelize');
@@ -28,6 +32,28 @@ module.exports = (sequelize, DataTypes) => {
         ],
         limit: 1
       });
+    }
+
+    /**
+     * 1日の総トランザクション数
+     */
+    static async todays_tx(){
+      const today = dayjs().tz();
+      return await this.findAll({
+        where: {
+          createdAt: { [Op.between]: [today.format('YYYY-MM-DD 00:00:00'), today.format('YYYY-MM-DD 23:59:59')] }
+        }
+      });
+    }
+
+    /**
+     * 1日の利用ユーザー
+     */
+     static async get_todays_users(){
+      const today = dayjs().tz();
+      return sequelize.query(
+        `SELECT count(DISTINCT address) as todays_count FROM GardenTransactionLists WHERE createdAt BETWEEN '${today.format('YYYY-MM-DD 00:00:00')}' AND '${today.format('YYYY-MM-DD 23:59:59')}'`,
+        { type: QueryTypes.SELECT });
     }
   }
   GardenTransactionLists.init({

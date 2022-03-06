@@ -15,6 +15,7 @@
     "log4js": "^6.4.1",
     "rxjs": "^7.5.4",
     "sequelize": "^6.16.2",
-    "symbol-sdk": "^1.0.3"
+    "symbol-sdk": "^1.0.3",
+    "twitter": "^1.7.1"
   }
 }
