@@ -185,7 +185,7 @@ const getAccountMosaic = (async()=>{
 * メイン処理
 */
 (async()=>{
-  
+
   const todays_transaction = await TxList.todays_tx();  //一日に飛ばしたトランザクション数
   const todays_user = await TxList.get_todays_users();  //一日に利用したユーザー数
   log(todays_transaction.length);

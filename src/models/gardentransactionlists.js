@@ -39,6 +39,7 @@ module.exports = (sequelize, DataTypes) => {
      */
     static async todays_tx(){
       let today = dayjs().tz();
+      console.log(today.subtract(1, 'day').format('YYYY-MM-DD 15:00:00'));
       return await this.findAll({
         where: {
           createdAt: { [Op.between]: [today.subtract(1, 'day').format('YYYY-MM-DD 15:00:00'), today.format('YYYY-MM-DD 14:59:59')] }
