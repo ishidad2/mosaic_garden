@@ -22,7 +22,10 @@
           <v-list-item>
             <v-list-item-content>
               <v-list-item-title>
-                <router-link :to="{name: 'Home'}">Home</router-link>
+                <router-link :to="{name: 'Home'}">Top</router-link>
+              </v-list-item-title>
+              <v-list-item-title>
+                <router-link :to="{name: 'Mosaics'}">Mosaics</router-link>
               </v-list-item-title>
               <v-list-item-title>
                 <router-link :to="{name: 'Meta'}">CreateMeta</router-link>
