@@ -139,8 +139,8 @@ const sendTransfar = (async(height, transaction)=>{
     log('送信中止');
     return;
   }
-  let is_limit_break = false;
-  //本日何回目かを検証
+  //リミットブレイクの有無
+  let is_limit_break = true;
   
   //リミット解除モザイクを持っているかどうか
   const limitBreakMosaics = await limitBreak.findAll();
