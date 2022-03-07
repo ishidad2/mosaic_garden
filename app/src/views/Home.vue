@@ -5,7 +5,7 @@
         <v-col
           v-for="card in cards"
           :key="card.title"
-          :cols="card.flex"
+          ms="2" lg="3" md="4"
         >
           <v-card>
             <v-img
@@ -37,9 +37,9 @@ export default {
   data() {
     return {
       cards: [
-        { title: 'Mosaics', src: require('@/assets/img/mosaics.png'), flex: 3, link:{name: "Mosaics"} },
-        { title: 'CreateMeta', src: require('@/assets/img/create_meta.png'), flex: 3, link:{name: "Meta"} },
-        { title: 'GardenAccount', src: require('@/assets/img/garden_account.png'), flex: 3, link:{name: "Tx"} },
+        { title: 'Mosaics', src: require('@/assets/img/mosaics.png'), link:{name: "Mosaics"} },
+        { title: 'CreateMeta', src: require('@/assets/img/create_meta.png'), link:{name: "Meta"} },
+        { title: 'GardenAccount', src: require('@/assets/img/garden_account.png'), link:{name: "Tx"} },
       ]
     }
   },
