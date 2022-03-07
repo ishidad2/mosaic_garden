@@ -5,17 +5,17 @@ Vue.use(VueRouter)
 
 const routes = [
   {
-    path: '',
+    path: '/mosaic_garden',
     name: 'Home',
     component: () => import('../views/MosaicCard.vue')
   },
   {
-    path: 'transaction',
+    path: '/mosaic_garden/transaction',
     name: 'Tx',
     component: () => import('../views/Transaction.vue')
   },
   {
-    path: 'CreateMeta',
+    path: '/mosaic_garden/CreateMeta',
     name: 'Meta',
     component: () => import('../views/Meta.vue')
   }
