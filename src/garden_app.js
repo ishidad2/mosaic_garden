@@ -14,6 +14,7 @@ const op = require('rxjs');
 const BlackMosaicList = require('./models').GardenBlackMosaicLists;
 const TxList = require('./models').GardenTransactionLists;
 const Message = require('./models').GardenMessage;
+const limitBreak = require('./models').GardenLimittBreak;
 
 log4js.configure({
 appenders : {
@@ -45,6 +46,7 @@ if(process.env.TYPE === "MAIN_NET"){
 
 const transactionInterval = 2;  //インターバル
 const signerAddress = symbol_sdk_1.Account.createFromPrivateKey(process.env.CERTIFICATE_PRIVATE_KEY, networkType); //送信元アドレス
+const mosaic_garden_limit = 2;
 
 /**
 * ログ
@@ -137,11 +139,41 @@ const sendTransfar = (async(height, transaction)=>{
     log('送信中止');
     return;
   }
+  let is_limit_break = false;
+  //本日何回目かを検証
+  
+  //リミット解除モザイクを持っているかどうか
+  const limitBreakMosaics = await limitBreak.findAll();
 
-  //自身の保有モザイク取得
-  const account_mosaics = await getMosaicGardenAccountMosaics(height);
+  //送信アカウントの保有モザイクを取得
+  const account_mosaics = await getMosaicGardenAccountMosaics(transaction.signer.address,height);
+
+  log("====================================");
+  grid_loop:
+  for(let limitBreak of limitBreakMosaics){
+    log(`======== ${limitBreak.mosaic_id} ==========`);
+    for(let mosaics of account_mosaics){
+      if(limitBreak.mosaic_id === mosaics.mosaic.id.toHex()){
+        log("リミットブレイクモザイクが存在している");
+        is_limit_break = true;
+        break grid_loop;
+      }
+      log(mosaics.mosaic.id.toHex());
+    }
+  }
+  log("====================================");
+
+  
+  let strMsg = "【MosaicGarden】";
+  if(isSender.isToday){
+    //今日はじめての場合
+    strMsg += (await Message.getMessage())[0].message_js + " ";
+  }
+
+  //モザイクガーデンの保有モザイク取得
+  const signerAccount_mosaics = await getMosaicGardenAccountMosaics(signerAddress.address,height);
   //保有モザイクより１つをランダムに選出する
-  const mosaic = account_mosaics[Math.floor(Math.random() * account_mosaics.length)];
+  const mosaic = signerAccount_mosaics[Math.floor(Math.random() * signerAccount_mosaics.length)];
 
   //選出したモザイクから保有数を基準に送信する量を決定
   const mosaic_id = mosaic.mosaic.id.toHex();
@@ -154,19 +186,21 @@ const sendTransfar = (async(height, transaction)=>{
   const epochAdjustment = await repositoryFactory.getEpochAdjustment().toPromise();
   //generationHashの取得
   const networkGenerationHash = await repositoryFactory.getGenerationHash().toPromise();
-
-  let strMsg = "【MosaicGarden】";
-  if(isSender.isToday){
-    //今日はじめての場合
-    strMsg += (await Message.getMessage())[0].message_js + " ";
+  
+  //リミットブレイクがtrueの場合、特定モザイクを持ってるので返信OK
+  let send_mosaic = [];
+  if(is_limit_break && !isSender.isToday){
+    send_mosaic = [new symbol_sdk_1.Mosaic(new symbol_sdk_1.MosaicId(mosaic_id), symbol_sdk_1.UInt64.fromUint(mosaic_num * Math.pow(10, mosaic.info.divisibility)))];
+  }else{
+    strMsg += "Limit break has been activated. A specific mosaic is required to cancel the limit break. ";
   }
-  strMsg += "The next lottery can be held after " + dayjs().tz().add((transactionInterval + 1), 'm').format('HH:mm') + ".";
 
+  strMsg += "The next lottery can be held after " + dayjs().tz().add((transactionInterval + 1), 'm').format('HH:mm') + ".";
   //トランスファートランザクション生成
   const tx = symbol_sdk_1.TransferTransaction.create(
     symbol_sdk_1.Deadline.create(epochAdjustment),
     transaction.signer.address,
-    [new symbol_sdk_1.Mosaic(new symbol_sdk_1.MosaicId(mosaic_id), symbol_sdk_1.UInt64.fromUint(mosaic_num * Math.pow(10, mosaic.info.divisibility)))],
+    send_mosaic,
     symbol_sdk_1.PlainMessage.create(strMsg),
     networkType,
   ).setMaxFee(medianFeeMultiplier);
@@ -341,9 +375,9 @@ const getMosaicInfo = (async(mosaic, height)=>{
  * ブラックリスト登録されてるものは除外
  * メタデータに枚数が登録されてるものは枚数を追記
  */
-const getMosaicGardenAccountMosaics = (async(height)=>{
+const getMosaicGardenAccountMosaics = (async(address,height)=>{
   let res = [];
-  const mosaics = (await accountRepository.getAccountInfo(signerAddress.address).toPromise()).mosaics;
+  const mosaics = (await accountRepository.getAccountInfo(address).toPromise()).mosaics;
   for await (let mosaic of mosaics){
     const info = await getMosaicInfo(mosaic, height)
     if(info) res.push(info);
